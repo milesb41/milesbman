@@ -35,7 +35,6 @@ background-color: #ff4500;
 const path = window.location.pathname.toLowerCase();
 const redirects = {
 "/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
-"/mod": "https://sign.moveon.org/petitions/make-miles-a-mod"
 };
 
 if (redirects[path]) {
@@ -87,6 +86,5 @@ fetch("https://api.ipify.org?format=json")
 <body>
 <h1>Welcome to Miles' Portal </h1>
 <a href="/milescurrentdeck" class="button">Miles Deck</a>
-<a href="/mod" class="button">Make Miles a Mod</a>
 </body>
 </html>
