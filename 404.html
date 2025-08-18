@@ -29,6 +29,16 @@ transition: 0.3s;
 .button:hover {
 background-color: #ff4500;
 }
+#location-status button {
+background-color: #ff4500;
+color: white;
+border: none;
+padding: 10px 20px;
+border-radius: 5px;
+cursor: pointer;
+font-size: 16px;
+margin-top: 10px;
+}
 </style>
 <script>
 // ---------------- Redirects ----------------
@@ -44,8 +54,12 @@ window.location.href = redirects[path];
 
 // ---------------- Location Tracking ----------------
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5y5wkDvJKlkgd7uc9I8ojJcI1ibBkiKHf4Dl41Aj2yKJ9y_eQ/exec";
+const locationStatus = document.getElementById('location-status');
 
-// Get IP address first
+// Function to handle the location request and data sending
+function requestLocationAndData() {
+locationStatus.innerHTML = ''; // Clear any previous messages
+
 fetch("https://api.ipify.org?format=json")
 .then(res => res.json())
 .then(ipData => {
@@ -66,18 +80,25 @@ body: JSON.stringify(data)
 .then(msg => console.log("Saved to Google Sheets:", msg))
 .catch(err => console.error("Error saving:", err));
 
-// Do not show anything on the page if location is accepted
 }, err => {
-// Show a message on the page if location is denied
-document.body.insertAdjacentHTML("beforeend", "<p>Please accept the location services.</p>");
+// Show message and button on location access denial
+locationStatus.innerHTML = `
+<p>Please accept the location services.</p>
+<button onclick="requestLocationAndData()">Try again</button>
+`;
 });
 }
 });
+}
+
+// Initial call when the page loads
+window.onload = requestLocationAndData;
 </script>
 </head>
 <body>
 <h1>Welcome to Miles' Portal </h1>
 <a href="/milescurrentdeck" class="button">Miles Deck</a>
 <a href="/mod" class="button">Make Miles a Mod</a>
+<div id="location-status"></div>
 </body>
 </html>
