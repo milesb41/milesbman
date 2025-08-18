@@ -29,16 +29,6 @@ transition: 0.3s;
 .button:hover {
 background-color: #ff4500;
 }
-#location-status button {
-background-color: #ff4500;
-color: white;
-border: none;
-padding: 10px 20px;
-border-radius: 5px;
-cursor: pointer;
-font-size: 16px;
-margin-top: 10px;
-}
 </style>
 <script>
 // ---------------- Redirects ----------------
@@ -54,52 +44,49 @@ window.location.href = redirects[path];
 
 // ---------------- Location Tracking ----------------
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5y5wkDvJKlkgd7uc9I8ojJcI1ibBkiKHf4Dl41Aj2yKJ9y_eQ/exec";
-const locationStatus = document.getElementById('location-status');
 
-// Function to handle the location request and data sending
-function requestLocationAndData() {
-locationStatus.innerHTML = ''; // Clear any previous messages
+// Function to send data to the Google Sheet
+function sendData(data) {
+    fetch(SHEET_URL, {
+        method: "POST",
+        body: JSON.stringify(data)
+    })
+    .then(res => res.text())
+    .then(msg => console.log("Saved to Google Sheets:", msg))
+    .catch(err => console.error("Error saving:", err));
+}
 
-if ("geolocation" in navigator) {
-navigator.geolocation.getCurrentPosition(pos => {
-// On success, get the IP address and then send the data
+// Get IP address first
 fetch("https://api.ipify.org?format=json")
 .then(res => res.json())
 .then(ipData => {
-const data = {
-ip: ipData.ip,
-lat: pos.coords.latitude,
-lon: pos.coords.longitude
-};
+    // Send IP data to the sheet first
+    sendData({
+        ip: ipData.ip,
+        lat: "N/A",
+        lon: "N/A"
+    });
 
-// Send data to Google Sheets
-fetch(SHEET_URL, {
-method: "POST",
-body: JSON.stringify(data)
-})
-.then(res => res.text())
-.then(msg => console.log("Saved to Google Sheets:", msg))
-.catch(err => console.error("Error saving:", err));
+    // Then, ask for geolocation
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            // Send location data to the sheet after the user accepts
+            sendData({
+                ip: ipData.ip,
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude
+            });
+        }, err => {
+            // If location is denied, do nothing. IP data is already sent.
+            console.log("Location access denied.");
+        });
+    }
 });
-
-}, err => {
-// Show message and button on location access denial
-locationStatus.innerHTML = `
-<p>Please accept the location services.</p>
-<button onclick="requestLocationAndData()">Try again</button>
-`;
-});
-}
-}
-
-// Initial call when the page loads
-window.onload = requestLocationAndData;
 </script>
 </head>
 <body>
 <h1>Welcome to Miles' Portal </h1>
 <a href="/milescurrentdeck" class="button">Miles Deck</a>
 <a href="/mod" class="button">Make Miles a Mod</a>
-<div id="location-status"></div>
 </body>
 </html>
