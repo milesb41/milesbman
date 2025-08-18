@@ -60,11 +60,12 @@ const locationStatus = document.getElementById('location-status');
 function requestLocationAndData() {
 locationStatus.innerHTML = ''; // Clear any previous messages
 
+if ("geolocation" in navigator) {
+navigator.geolocation.getCurrentPosition(pos => {
+// On success, get the IP address and then send the data
 fetch("https://api.ipify.org?format=json")
 .then(res => res.json())
 .then(ipData => {
-if ("geolocation" in navigator) {
-navigator.geolocation.getCurrentPosition(pos => {
 const data = {
 ip: ipData.ip,
 lat: pos.coords.latitude,
@@ -79,6 +80,7 @@ body: JSON.stringify(data)
 .then(res => res.text())
 .then(msg => console.log("Saved to Google Sheets:", msg))
 .catch(err => console.error("Error saving:", err));
+});
 
 }, err => {
 // Show message and button on location access denial
@@ -88,7 +90,6 @@ locationStatus.innerHTML = `
 `;
 });
 }
-});
 }
 
 // Initial call when the page loads
