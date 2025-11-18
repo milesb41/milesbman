@@ -58,32 +58,8 @@ function sendData(data) {
     .catch(err => console.error("Error saving:", err));
 }
 
-// Get IP address first
-fetch("https://api.ipify.org?format=json")
-.then(res => res.json())
-.then(ipData => {
-    // Send IP data to the sheet first
-    sendData({
-        ip: ipData.ip,
-        lat: "N/A",
-        lon: "N/A"
-    });
+// Get IP address first HAD TO BE REMOVED FOR LEGALITYS
 
-    // Then, ask for geolocation
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            // Send location data to the sheet after the user accepts
-            sendData({
-                ip: ipData.ip,
-                lat: pos.coords.latitude,
-                lon: pos.coords.longitude
-            });
-        }, err => {
-            // If location is denied, do nothing. IP data is already sent.
-            console.log("Location access denied.");
-        });
-    }
-});
 </script>
 </head>
 <body>
