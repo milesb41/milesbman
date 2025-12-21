@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Archive Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .zip-section { background: white; margin-bottom: 30px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .zip-header { background: #333; color: white; padding: 15px 20px; font-size: 1.2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; padding: 20px; }
+        .file-box { border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fafafa; text-align: center; }
+        .file-box strong { display: block; font-size: 12px; margin-bottom: 8px; word-break: break-all; color: #555; }
+        img { max-width: 100%; height: auto; border-radius: 4px; border: 1px solid #ddd; }
+        pre { font-size: 10px; text-align: left; background: #222; color: #0f0; padding: 8px; border-radius: 4px; overflow: hidden; height: 100px; }
+        .loader { font-size: 1.5rem; text-align: center; margin-top: 50px; color: #666; }
+    </style>
+</head>
+<body>
+
+    <h1>Global Archive Feed</h1>
+    <div id="master-container">
+        <div class="loader" id="loader">Unzipping all archives...</div>
+    </div>
+
+    <script>
+        // 1. List all your zip files here
+        const zipFiles = [
+            'project1.zip',
+            'assets_v2.zip',
+            'backup_images.zip'
+        ];
+        
+        const basePath = 'assets/Efiles/';
+        const container = document.getElementById('master-container');
+
+        async function processAllZips() {
+            try {
+                // Map the filenames to an array of download/process promises
+                const tasks = zipFiles.map(async (filename) => {
+                    const response = await fetch(basePath + filename);
+                    if (!response.ok) return { filename, error: "Not found" };
+                    
+                    const blob = await response.blob();
+                    const zipData = await JSZip.loadAsync(blob);
+                    return { filename, zipData };
+                });
+
+                // Wait for all downloads to finish
+                const results = await Promise.all(tasks);
+                document.getElementById('loader').remove();
+
+                // 2. Render each ZIP result
+                results.forEach(result => {
+                    renderZipSection(result);
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loader').innerText = "Critical Error: Check console.";
+            }
+        }
+
+        async function renderZipSection(result) {
+            // Create a section for this specific ZIP
+            const section = document.createElement('div');
+            section.className = 'zip-section';
+            
+            const header = document.createElement('div');
+            header.className = 'zip-header';
+            header.innerText = `📦 Source: ${result.filename}`;
+            section.appendChild(header);
+
+            if (result.error) {
+                section.innerHTML += `<p style="padding:20px; color:red;">Error: ${result.error}</p>`;
+                container.appendChild(section);
+                return;
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+
+            // Loop through contents of this specific ZIP
+            const fileEntries = Object.keys(result.zipData.files);
+            
+            for (const path of fileEntries) {
+                const file = result.zipData.files[path];
+                if (file.dir) continue;
+
+                const box = document.createElement('div');
+                box.className = 'file-box';
+                box.innerHTML = `<strong>${path}</strong>`;
+
+                // Render based on type
+                if (path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                    const imgBlob = await file.async("blob");
+                    const url = URL.createObjectURL(imgBlob);
+                    box.innerHTML += `<img src="${url}">`;
+                } else {
+                    const text = await file.async("string");
+                    const preview = text.substring(0, 150) + (text.length > 150 ? "..." : "");
+                    box.innerHTML += `<pre>${preview}</pre>`;
+                }
+
+                grid.appendChild(box);
+            }
+
+            section.appendChild(grid);
+            container.appendChild(section);
+        }
+
+        processAllZips();
+    </script>
+</body>
+</html>
