@@ -1,12 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="author" content="Miles">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suggestions Page</title>
+    <title>Permanent Suggestion Box</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { background: #1a73e8; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background: #1557b0; }
+        .post { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .post:last-child { border: none; }
+        .post-name { font-weight: bold; color: #1a73e8; }
+        .post-date { font-size: 0.8rem; color: #888; margin-left: 10px; }
+        .filter-section { background: #333; color: white; }
+        h2, h3 { margin-top: 0; }
+    </style>
 </head>
 <body>
-    
+
+    <div class="card">
+        <h2>💡 Submit a Suggestion</h2>
+        <input type="text" id="userName" placeholder="Your Name">
+        <textarea id="userText" rows="3" placeholder="What should we improve?"></textarea>
+        <button onclick="sendToCloud()">Submit to Public Feed</button>
+    </div>
+
+    <div class="card filter-section">
+        <h3>Admin: Word Filter</h3>
+        <p style="font-size: 0.8rem; opacity: 0.8;">Suggestions containing these words will be censored:</p>
+        <input type="text" id="wordFilter" placeholder="e.g. apple, banana, orange" style="color: black;">
+    </div>
+
+    <div class="card">
+        <h2>Public Suggestions</h2>
+        <div id="suggestionFeed">Checking the cloud for suggestions...</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Your specific Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAOhxc2fAsuSNZhnOiqQE9uJHhtG9ONr6o",
+            authDomain: "suggestions-2bc1c.firebaseapp.com",
+            projectId: "suggestions-2bc1c",
+            storageBucket: "suggestions-2bc1c.firebasestorage.app",
+            messagingSenderId: "624122500508",
+            appId: "1:624122500508:web:bea268bd6616529ffee459",
+            measurementId: "G-TFSZ1LTRHF"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const colRef = collection(db, "suggestions");
+
+        // --- SEND DATA ---
+        window.sendToCloud = async function() {
+            const nameInput = document.getElementById('userName');
+            const textInput = document.getElementById('userText');
+            const filterInput = document.getElementById('wordFilter').value;
+            
+            let name = nameInput.value.trim() || "Anonymous";
+            let text = textInput.value.trim();
+
+            if(!text) return alert("Please enter a suggestion!");
+
+            // Filter logic
+            const forbidden = filterInput.split(',').map(w => w.trim().toLowerCase()).filter(w => w !== "");
+            forbidden.forEach(word => {
+                const regex = new RegExp(word, "gi");
+                text = text.replace(regex, "****");
+                name = name.replace(regex, "****");
+            });
+
+            try {
+                await addDoc(colRef, {
+                    name: name,
+                    text: text,
+                    timestamp: Date.now()
+                });
+                textInput.value = "";
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                alert("Make sure your Firestore rules are set to 'Test Mode'!");
+            }
+        };
+
+        // --- RECEIVE DATA (Real-time) ---
+        const q = query(colRef, orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
+            const feed = document.getElementById('suggestionFeed');
+            if (snapshot.empty) {
+                feed.innerHTML = "No suggestions yet. Be the first!";
+                return;
+            }
+            feed.innerHTML = "";
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
+                const div = document.createElement('div');
+                div.className = "post";
+                div.innerHTML = `
+                    <div><span class="post-name">${data.name}</span>
+                    <span class="post-date">${new Date(data.timestamp).toLocaleString()}</span></div>
+                    <p>${data.text}</p>
+                `;
+                feed.appendChild(div);
+            });
+        });
+    </script>
 </body>
 </html>
