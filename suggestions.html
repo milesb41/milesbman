@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Permanent Suggestion Box</title>
+    <title>Website Suggestions</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f0f2f5; }
         .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
         input, textarea { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { background: #1a73e8; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
+        button { background: #1a73e8; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: background 0.2s; }
         button:hover { background: #1557b0; }
         .post { border-bottom: 1px solid #eee; padding: 15px 0; }
         .post:last-child { border: none; }
         .post-name { font-weight: bold; color: #1a73e8; }
+        .post-status { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 10px; background: #e0e0e0; color: #666; text-transform: uppercase; }
         .post-date { font-size: 0.8rem; color: #888; margin-left: 10px; }
-        .filter-section { background: #333; color: white; }
-        h2, h3 { margin-top: 0; }
+        h2 { margin-top: 0; color: #333; }
     </style>
 </head>
 <body>
@@ -27,23 +27,18 @@
         <button onclick="sendToCloud()">Submit to Public Feed</button>
     </div>
 
-    <div class="card filter-section">
-        <h3>Admin: Word Filter</h3>
-        <p style="font-size: 0.8rem; opacity: 0.8;">Suggestions containing these words will be censored:</p>
-        <input type="text" id="wordFilter" placeholder="e.g. apple, banana, orange" style="color: black;">
-    </div>
-
     <div class="card">
         <h2>Public Suggestions</h2>
-        <div id="suggestionFeed">Checking the cloud for suggestions...</div>
+        <div id="suggestionFeed">Checking for updates...</div>
     </div>
 
     <script type="module">
+        // 1. Correct Imports (Added getDocs for the filter)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } 
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Your specific Firebase configuration
+        // 2. Your specific Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAOhxc2fAsuSNZhnOiqQE9uJHhtG9ONr6o",
             authDomain: "suggestions-2bc1c.firebaseapp.com",
@@ -57,40 +52,44 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const colRef = collection(db, "suggestions");
+        const banRef = collection(db, "bannedWords");
 
         // --- SEND DATA ---
         window.sendToCloud = async function() {
             const nameInput = document.getElementById('userName');
             const textInput = document.getElementById('userText');
-            const filterInput = document.getElementById('wordFilter').value;
-            
             let name = nameInput.value.trim() || "Anonymous";
             let text = textInput.value.trim();
 
             if(!text) return alert("Please enter a suggestion!");
 
-            // Filter logic
-            const forbidden = filterInput.split(',').map(w => w.trim().toLowerCase()).filter(w => w !== "");
-            forbidden.forEach(word => {
-                const regex = new RegExp(word, "gi");
-                text = text.replace(regex, "****");
-                name = name.replace(regex, "****");
-            });
-
+            // Fetch latest banned words from Admin settings
             try {
+                const querySnapshot = await getDocs(banRef); 
+                querySnapshot.forEach((doc) => {
+                    const word = doc.data().word;
+                    if(word) {
+                        const regex = new RegExp(word, "gi");
+                        text = text.replace(regex, "****");
+                        name = name.replace(regex, "****");
+                    }
+                });
+
                 await addDoc(colRef, {
                     name: name,
                     text: text,
+                    status: "Pending", 
                     timestamp: Date.now()
                 });
+                
                 textInput.value = "";
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                alert("Make sure your Firestore rules are set to 'Test Mode'!");
+            } catch (e) {
+                console.error("Error:", e);
+                alert("Could not send suggestion.");
             }
         };
 
-        // --- RECEIVE DATA (Real-time) ---
+        // --- RECEIVE DATA ---
         const q = query(colRef, orderBy("timestamp", "desc"));
         onSnapshot(q, (snapshot) => {
             const feed = document.getElementById('suggestionFeed');
@@ -104,8 +103,11 @@
                 const div = document.createElement('div');
                 div.className = "post";
                 div.innerHTML = `
-                    <div><span class="post-name">${data.name}</span>
-                    <span class="post-date">${new Date(data.timestamp).toLocaleString()}</span></div>
+                    <div>
+                        <span class="post-name">${data.name}</span>
+                        <span class="post-status">${data.status || 'Pending'}</span>
+                        <span class="post-date">${new Date(data.timestamp).toLocaleDateString()}</span>
+                    </div>
                     <p>${data.text}</p>
                 `;
                 feed.appendChild(div);
