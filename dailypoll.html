@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Polls</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f0f2f5; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        .poll-option { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; border: 1px solid #ddd; transition: 0.2s; position: relative; overflow: hidden; }
+        .poll-option.voted { cursor: default; border-color: #ccc; }
+        .poll-option:not(.voted):hover { background: #e9ecef; border-color: #1a73e8; }
+        .progress-bar { position: absolute; left: 0; top: 0; height: 100%; background: rgba(26, 115, 232, 0.1); transition: width 0.5s ease; z-index: 0; }
+        .option-text { z-index: 1; position: relative; width: 100%; display: flex; justify-content: space-between; }
+        .prev-poll { border-bottom: 1px solid #eee; padding: 15px 0; }
+        .prev-poll:last-child { border: none; }
+        h2, h4 { margin-top: 0; color: #333; }
+        .percentage { font-weight: bold; color: #1a73e8; }
+        .voted-msg { color: #28a745; font-size: 0.8rem; font-weight: bold; margin-top: 10px; display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🗳️ Daily Poll</h2>
+        <div id="currentPoll">Connecting to database...</div>
+    </div>
+
+    <div class="card">
+        <h3>Previous Polls</h3>
+        <div id="pollHistory">Checking history...</div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, increment } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAOhxc2fAsuSNZhnOiqQE9uJHhtG9ONr6o",
+        authDomain: "suggestions-2bc1c.firebaseapp.com",
+        projectId: "suggestions-2bc1c",
+        storageBucket: "suggestions-2bc1c.firebasestorage.app",
+        messagingSenderId: "624122500508",
+        appId: "1:624122500508:web:bea268bd6616529ffee459"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const pollRef = collection(db, "polls");
+
+    // This variable helps the UI update instantly
+    let userJustVotedId = null;
+
+    window.vote = async (pollId, optionNum) => {
+        if (localStorage.getItem("voted_" + pollId)) {
+            return alert("You have already voted on this poll!");
+        }
+
+        try {
+            const docRef = doc(db, "polls", pollId);
+            const field = optionNum === 1 ? "votes1" : "votes2";
+            
+            // 1. Mark in memory that we voted
+            localStorage.setItem("voted_" + pollId, "true");
+            userJustVotedId = pollId; // Track this for the UI refresh
+
+            // 2. Update Firebase
+            await updateDoc(docRef, { [field]: increment(1) });
+            
+            console.log("Vote successful.");
+            // Note: The onSnapshot listener below will automatically 
+            // trigger and redraw the UI now that the DB changed.
+        } catch (error) {
+            console.error("Voting failed:", error);
+            localStorage.removeItem("voted_" + pollId); // Clean up on error
+        }
+    };
+
+    onSnapshot(query(pollRef, orderBy("timestamp", "desc")), (snap) => {
+        const currentContainer = document.getElementById('currentPoll');
+        const historyContainer = document.getElementById('pollHistory');
+        
+        if (snap.empty) {
+            currentContainer.innerHTML = "No polls available.";
+            return;
+        }
+
+        currentContainer.innerHTML = "";
+        historyContainer.innerHTML = "";
+
+        snap.docs.forEach((d, index) => {
+            const data = d.data();
+            const total = (data.votes1 || 0) + (data.votes2 || 0);
+            const p1 = total === 0 ? 0 : Math.round((data.votes1 / total) * 100);
+            const p2 = total === 0 ? 0 : Math.round((data.votes2 / total) * 100);
+            
+            // Check LocalStorage OR if they just clicked the button
+            const hasVoted = localStorage.getItem("voted_" + d.id) || userJustVotedId === d.id;
+
+            if(index === 0) { 
+                currentContainer.innerHTML = `
+                    <h4>${data.question}</h4>
+                    <div class="poll-option ${hasVoted ? 'voted' : ''}" onclick="vote('${d.id}', 1)">
+                        <div class="progress-bar" style="width: ${hasVoted ? p1 : 0}%"></div>
+                        <div class="option-text">
+                            <span>${data.option1}</span> 
+                            <span class="percentage">${hasVoted ? p1 + '%' : ''}</span>
+                        </div>
+                    </div>
+                    <div class="poll-option ${hasVoted ? 'voted' : ''}" onclick="vote('${d.id}', 2)">
+                        <div class="progress-bar" style="width: ${hasVoted ? p2 : 0}%"></div>
+                        <div class="option-text">
+                            <span>${data.option2}</span> 
+                            <span class="percentage">${hasVoted ? p2 + '%' : ''}</span>
+                        </div>
+                    </div>
+                    ${hasVoted ? '<span class="voted-msg">✓ Vote recorded!</span>' : '<small>Click an option to vote</small>'}
+                    <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">${total} total votes</p>
+                `;
+            } else { 
+                historyContainer.innerHTML += `
+                    <div class="prev-poll">
+                        <strong>${data.question}</strong><br>
+                        <small>${data.option1} (${p1}%) | ${data.option2} (${p2}%) — ${total} votes</small>
+                    </div>
+                `;
+            }
+        });
+    });
+</script>
+</body>
+</html>

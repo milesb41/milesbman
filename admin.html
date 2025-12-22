@@ -3,48 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Suggestions</title>
+    <title>Admin Dashboard</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #1a1a1b; color: #eee; }
-        #adminAuth { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1b; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
-        #adminContent { display: none; }
-        .card { background: #2b2d2e; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #444; }
+        
+        /* Auth Screen */
+        #adminAuth { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a1b; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; text-align: center; }
+        
+        /* Navigation Tabs */
+        .nav-bar { display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+        .nav-btn { background: #333; color: #ccc; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .nav-btn.active { background: #2196f3; color: white; }
+        .nav-btn:hover:not(.active) { background: #444; }
+
+        /* Content Sections */
+        .admin-section { display: none; }
+        .admin-section.active { display: block; }
+
+        /* Styling Cards */
+        .card { background: #2b2d2e; padding: 20px; border-radius: 12px; border: 1px solid #444; margin-bottom: 20px; }
         .post { border-bottom: 1px solid #444; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Buttons & Inputs */
+        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-delete { background: #f44336; color: white; }
+        .btn-work { background: #2196f3; color: white; }
+        .btn-login { background: #1a73e8; color: white; width: 250px; margin-top: 15px; }
+        
+        input { padding: 12px; border-radius: 8px; border: 1px solid #444; background: #1a1a1b; color: white; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
         .status-tag { font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; margin-left: 10px; }
         .status-pending { background: #ff9800; color: black; }
         .status-working { background: #2196f3; color: white; }
-        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 5px; }
-        .btn-delete { background: #f44336; color: white; }
-        .btn-work { background: #2196f3; color: white; }
-        .btn-login { background: #1a73e8; color: white; width: 250px; margin-top: 10px; }
-        .banned-word { display: inline-block; background: #444; padding: 5px 10px; margin: 5px; border-radius: 20px; }
-        .remove-word { cursor: pointer; color: #ff5252; margin-left: 8px; font-weight: bold; }
-        input { padding: 12px; border-radius: 8px; border: 1px solid #444; background: #1a1a1b; color: white; width: 250px; }
+        
+        #adminContent { display: none; }
+
+        /* Detailed Poll Text */
+        .poll-info { font-size: 0.85rem; color: #bbb; margin-top: 5px; display: flex; gap: 15px; }
+        .poll-info strong { color: #2196f3; }
     </style>
 </head>
 <body>
 
     <div id="adminAuth">
         <h2>🔒 Admin Access Required</h2>
-        <h2> IF YOU DID NOT MEAN TO COME HERE LEAVE IMMIDETLY AND GO BACK TO THE HOME PAGE</h2>
-        <input type="password" id="passInput" placeholder="Enter Admin Password">
+        <input type="password" id="passInput" placeholder="Enter Password" style="width: 250px;">
         <button class="btn btn-login" onclick="checkPassword()">Login</button>
         <p id="errorMsg" style="color: #ff5252; margin-top: 10px; display: none;">Incorrect Password!</p>
     </div>
 
     <div id="adminContent">
-        <h1>🛠 Admin Dashboard</h1>
-        <h2>Manage Suggestions</h2>
-        <div class="card">
-            <h3>🚫 Manage Banned Words</h3>
-            <input type="text" id="newWord" placeholder="Add new word...">
-            <button class="btn btn-work" onclick="addBannedWord()">Add Word</button>
-            <div id="wordList" style="margin-top: 15px;"></div>
+        <h1>🛠 Admin Control Panel</h1>
+        
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="showSection('pollSection', this)">📊 Poll Creator</button>
+            <button class="nav-btn" onclick="showSection('suggSection', this)">📨 Suggestions</button>
+            <button class="nav-btn" onclick="showSection('wordSection', this)">🚫 Word Filter</button>
         </div>
 
-        <div class="card">
-            <h3>Moderation Feed</h3>
-            <div id="adminFeed">Loading suggestions...</div>
+        <div id="pollSection" class="admin-section active">
+            <div class="card">
+                <h3>Create New Poll</h3>
+                <input type="text" id="pollQ" placeholder="Poll Question">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="opt1" placeholder="Option 1">
+                    <input type="text" id="opt2" placeholder="Option 2">
+                </div>
+                <button class="btn btn-work" onclick="createPoll()" style="width: 100%;">Post Poll</button>
+            </div>
+            <div class="card">
+                <h3>Previous Polls & Live Stats</h3>
+                <div id="adminPollFeed">Loading polls...</div>
+            </div>
+        </div>
+
+        <div id="suggSection" class="admin-section">
+            <div class="card">
+                <h3>Moderation Feed</h3>
+                <div id="adminFeed">Loading suggestions...</div>
+            </div>
+        </div>
+
+        <div id="wordSection" class="admin-section">
+            <div class="card">
+                <h3>Add Banned Word</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="newWord" placeholder="Type word here..." style="margin: 0;">
+                    <button class="btn btn-work" onclick="addBannedWord()">Add</button>
+                </div>
+                <div id="wordList" style="margin-top: 15px;"></div>
+            </div>
         </div>
     </div>
 
@@ -53,21 +100,8 @@
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc, updateDoc } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // --- PASSWORD LOGIC ---
+        // --- CONFIG ---
         const CORRECT_PASSWORD = "IwishIwasanADMIN";
-
-        window.checkPassword = function() {
-            const input = document.getElementById('passInput').value;
-            if (input === CORRECT_PASSWORD) {
-                document.getElementById('adminAuth').style.display = 'none';
-                document.getElementById('adminContent').style.display = 'block';
-            } else {
-                document.getElementById('errorMsg').style.display = 'block';
-                document.getElementById('passInput').value = "";
-            }
-        };
-
-        // --- FIREBASE LOGIC ---
         const firebaseConfig = {
             apiKey: "AIzaSyAOhxc2fAsuSNZhnOiqQE9uJHhtG9ONr6o",
             authDomain: "suggestions-2bc1c.firebaseapp.com",
@@ -76,69 +110,99 @@
             messagingSenderId: "624122500508",
             appId: "1:624122500508:web:bea268bd6616529ffee459"
         };
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const suggRef = collection(db, "suggestions");
-        const banRef = collection(db, "bannedWords");
 
-        // We attach these to 'window' so the HTML buttons can see them
-        window.deletePost = async (id) => {
-            if(confirm("Delete this suggestion?")) {
-                try {
-                    await deleteDoc(doc(db, "suggestions", id));
-                } catch (err) {
-                    console.error("Error deleting:", err);
-                    alert("Delete failed. Check your Firebase Rules!");
-                }
+        // --- NAVIGATION ---
+        window.showSection = function(sectionId, btn) {
+            document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            btn.classList.add('active');
+        };
+
+        window.checkPassword = function() {
+            const input = document.getElementById('passInput').value;
+            if (input === CORRECT_PASSWORD) {
+                document.getElementById('adminAuth').style.display = 'none';
+                document.getElementById('adminContent').style.display = 'block';
+            } else {
+                document.getElementById('errorMsg').style.display = 'block';
             }
         };
 
-        window.markWorking = async (id) => {
-            await updateDoc(doc(db, "suggestions", id), { status: "Working on it" });
-        };
+        // --- DATABASE ACTIONS ---
+        window.deletePost = (id) => deleteDoc(doc(db, "suggestions", id));
+        window.markWorking = (id) => updateDoc(doc(db, "suggestions", id), { status: "Working on it" });
+        window.deletePoll = (id) => confirm("Delete this poll?") && deleteDoc(doc(db, "polls", id));
+        window.removeWord = (id) => deleteDoc(doc(db, "bannedWords", id));
 
         window.addBannedWord = async () => {
-            const word = document.getElementById('newWord').value.trim().toLowerCase();
-            if (word) {
-                await addDoc(banRef, { word: word });
-                document.getElementById('newWord').value = "";
+            const input = document.getElementById('newWord');
+            if(input.value) {
+                await addDoc(collection(db, "bannedWords"), { word: input.value.trim().toLowerCase() });
+                input.value = "";
             }
         };
 
-        window.removeWord = async (id) => {
-            await deleteDoc(doc(db, "bannedWords", id));
+        window.createPoll = async () => {
+            const q = document.getElementById('pollQ').value;
+            const o1 = document.getElementById('opt1').value;
+            const o2 = document.getElementById('opt2').value;
+            if(q && o1 && o2) {
+                await addDoc(collection(db, "polls"), {
+                    question: q, option1: o1, option2: o2, votes1: 0, votes2: 0, timestamp: Date.now()
+                });
+                document.getElementById('pollQ').value = "";
+                document.getElementById('opt1').value = "";
+                document.getElementById('opt2').value = "";
+            } else { alert("Please fill in all poll fields!"); }
         };
 
-        // Listeners for UI Updates
-        onSnapshot(banRef, (snap) => {
-            const container = document.getElementById('wordList');
-            container.innerHTML = "";
+        // --- REAL-TIME LISTENERS ---
+
+        // Suggestions Listener
+        onSnapshot(query(collection(db, "suggestions"), orderBy("timestamp", "desc")), (snap) => {
+            const feed = document.getElementById('adminFeed');
+            feed.innerHTML = snap.empty ? "No suggestions yet." : "";
             snap.forEach(d => {
-                container.innerHTML += `<span class="banned-word">${d.data().word} <span class="remove-word" onclick="removeWord('${d.id}')">×</span></span>`;
+                const data = d.data();
+                feed.innerHTML += `
+                    <div class="post">
+                        <div><strong>${data.name}</strong> <span class="status-tag ${data.status === 'Working on it' ? 'status-working' : 'status-pending'}">${data.status || 'Pending'}</span><br><small>${data.text}</small></div>
+                        <div><button class="btn btn-work" onclick="markWorking('${d.id}')">Work</button><button class="btn btn-delete" onclick="deletePost('${d.id}')">X</button></div>
+                    </div>`;
             });
         });
 
-        const q = query(suggRef, orderBy("timestamp", "desc"));
-        onSnapshot(q, (snapshot) => {
-            const feed = document.getElementById('adminFeed');
-            feed.innerHTML = "";
-            snapshot.forEach(d => {
+        // Detailed Polls Listener (Fixes your screenshot issue)
+        onSnapshot(query(collection(db, "polls"), orderBy("timestamp", "desc")), (snap) => {
+            const container = document.getElementById('adminPollFeed');
+            container.innerHTML = snap.empty ? "No polls created yet." : "";
+            snap.forEach(d => {
                 const data = d.data();
-                const div = document.createElement('div');
-                div.className = "post";
-                div.innerHTML = `
-                    <div style="max-width: 70%">
-                        <strong>${data.name}</strong> 
-                        <span class="status-tag ${data.status === 'Working on it' ? 'status-working' : 'status-pending'}">${data.status || 'Pending'}</span><br>
-                        <small>${data.text}</small>
-                    </div>
-                    <div>
-                        <button class="btn btn-work" onclick="markWorking('${d.id}')">Work on it</button>
-                        <button class="btn btn-delete" onclick="deletePost('${d.id}')">Delete</button>
-                    </div>
-                `;
-                feed.appendChild(div);
+                const total = (data.votes1 || 0) + (data.votes2 || 0);
+                container.innerHTML += `
+                    <div class="post">
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: bold; font-size: 1.1rem;">${data.question}</div>
+                            <div class="poll-info">
+                                <span>1️⃣ ${data.option1}: <strong>${data.votes1 || 0}</strong></span>
+                                <span>2️⃣ ${data.option2}: <strong>${data.votes2 || 0}</strong></span>
+                                <span>📈 Total: <strong>${total}</strong></span>
+                            </div>
+                        </div>
+                        <button class="btn btn-delete" onclick="deletePoll('${d.id}')">Delete</button>
+                    </div>`;
+            });
+        });
+
+        // Banned Words Listener
+        onSnapshot(collection(db, "bannedWords"), (snap) => {
+            const container = document.getElementById('wordList');
+            container.innerHTML = "";
+            snap.forEach(d => {
+                container.innerHTML += `<span style="background:#444; padding:5px 10px; margin:5px; border-radius:15px; display:inline-block; font-size: 0.9rem;">${d.data().word} <span onclick="removeWord('${d.id}')" style="color:#ff5252; cursor:pointer; margin-left:8px; font-weight:bold;">×</span></span>`;
             });
         });
     </script>
