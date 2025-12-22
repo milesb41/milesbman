@@ -37,7 +37,7 @@ const redirects = {
 "/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
 "/milescomp": "https://pcpartpicker.com/list/xmww2x",
 "/lethal": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-"/Nice": "Nice.html"
+"/nice": "nice.html"
 };
 
 if (redirects[path]) {
@@ -51,6 +51,7 @@ const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5
 function sendData(data) {
     fetch(SHEET_URL, {
         method: "POST",
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     })
     .then(res => res.text())
@@ -58,7 +59,50 @@ function sendData(data) {
     .catch(err => console.error("Error saving:", err));
 }
 
-// Get IP address first HAD TO BE REMOVED FOR LEGALITYS
+// Fetch public IP address (returns null on failure)
+async function getIP() {
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        if (!res.ok) throw new Error('IP fetch failed');
+        const json = await res.json();
+        return json.ip || null;
+    } catch (e) {
+        console.warn('Could not retrieve IP:', e);
+        return null;
+    }
+}
+
+// Collect tracking data (timestamp, path, userAgent, ip, optional geolocation) and send
+function collectAndSendTracking() {
+    (async () => {
+        const ip = await getIP();
+        const baseData = {
+            timestamp: new Date().toISOString(),
+            path: window.location.pathname,
+            userAgent: navigator.userAgent,
+            ip: ip
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                baseData.latitude = pos.coords.latitude;
+                baseData.longitude = pos.coords.longitude;
+                sendData(baseData);
+            }, (err) => {
+                // If geolocation denied or fails, send without coords
+                console.warn('Geolocation unavailable:', err);
+                sendData(baseData);
+            }, { timeout: 5000 });
+        } else {
+            sendData(baseData);
+        }
+    })();
+}
+
+// Send tracking data on page load
+collectAndSendTracking();
+
+
 
 </script>
 </head>
