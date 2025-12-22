@@ -48,11 +48,12 @@ window.location.href = redirects[path];
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5y5wkDvJKlkgd7uc9I8ojJcI1ibBkiKHf4Dl41Aj2yKJ9y_eQ/exec";
 
 // Function to send data to the Google Sheet
-function sendData(data) {
+function sendData(timestamp, ip, latitude, longitude) {
+    const row = [timestamp, ip, latitude, longitude];
     fetch(SHEET_URL, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(row)
     })
     .then(res => res.text())
     .then(msg => console.log("Saved to Google Sheets:", msg))
@@ -72,29 +73,26 @@ async function getIP() {
     }
 }
 
-// Collect tracking data (timestamp, path, userAgent, ip, optional geolocation) and send
+// Collect tracking data (timestamp, ip, latitude, longitude) and send
 function collectAndSendTracking() {
     (async () => {
         const ip = await getIP();
-        const baseData = {
-            timestamp: new Date().toISOString(),
-            path: window.location.pathname,
-            userAgent: navigator.userAgent,
-            ip: ip
-        };
+        const timestamp = new Date().toISOString();
+        let latitude = null;
+        let longitude = null;
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                baseData.latitude = pos.coords.latitude;
-                baseData.longitude = pos.coords.longitude;
-                sendData(baseData);
+                latitude = pos.coords.latitude;
+                longitude = pos.coords.longitude;
+                sendData(timestamp, ip, latitude, longitude);
             }, (err) => {
                 // If geolocation denied or fails, send without coords
                 console.warn('Geolocation unavailable:', err);
-                sendData(baseData);
+                sendData(timestamp, ip, latitude, longitude);
             }, { timeout: 5000 });
         } else {
-            sendData(baseData);
+            sendData(timestamp, ip, latitude, longitude);
         }
     })();
 }
