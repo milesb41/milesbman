@@ -4,33 +4,7 @@
 <meta name="author" content="Miles">
 <meta charset="UTF-8">
 <title>Miles' Portal </title>
-<style>
-body {
-font-family: 'Segoe UI', sans-serif;
-background-color: #1e1e1e;
-color: white;
-text-align: center;
-padding: 50px;
-}
-h1 {
-font-size: 2.5em;
-margin-bottom: 20px;
-}
-.button {
-display: inline-block;
-background-color: #3a3a3a;
-color: white;
-padding: 15px 30px;
-margin: 10px;
-border-radius: 8px;
-text-decoration: none;
-font-size: 18px;
-transition: 0.3s;
-}
-.button:hover {
-background-color: #ff4500;
-}
-</style>
+<link rel="stylesheet" href="index.css">
 <script>
 // ---------------- Redirects ----------------
 const path = window.location.pathname.toLowerCase();
@@ -103,12 +77,42 @@ collectAndSendTracking();
 
 
 </script>
+<script>
+    function filterLinks(category) {
+        const links = document.querySelectorAll('.link');
+
+        links.forEach(link => {
+            if (category === 'all') {
+                link.style.display = 'block';
+            } else {
+                link.style.display = link.classList.contains(category) 
+                ? 'block' 
+                : 'none';
+            }
+        });
+    }
+</script>
 </head>
 <body>
 <h1>Welcome To The Portal</h1>
 <p>By: Miles</p>
 <br>
 <br>
+<label for="filter">Filter Links</label>
+
+<select id="filter" onchange="filterLinks(this.value)">
+  <option value="all">All</option>
+  <option value="miles">Miles</option>
+  <option value="other">Other</option>
+</select>
+
+<div class="links">
+    <a href="#" class="link miles">Miles' Link 1</a>
+    <a href="#" class="link other">Other's Link 1</a>  
+</div>
+<footer>
+<a class="Sbutton" href="suggestions.html">Suggestions</a>
+</footer>
 </body>
 </html>
 <!DOCTYPE html>
