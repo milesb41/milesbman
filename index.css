@@ -47,5 +47,7 @@ select{
 .link {
     display: block;
     margin: 6px 0;
-    
+    background-color: #444141;
+    padding: 2px;
+    border-radius: 24px;
 }

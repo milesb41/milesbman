@@ -6,45 +6,51 @@
     <title>Collaborative Pixel Art</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .controls { margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; }
+        .controls { margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; position: relative; }
         
-        /* Grid setup: 20x20 squares */
         #canvas { 
             display: grid; 
-            grid-template-columns: repeat(20, 20px); 
-            grid-template-rows: repeat(20, 20px); 
+            /*Change first number of next two rows to make it bigger */ 
+            grid-template-columns: repeat(30, 20px);   
+            grid-template-rows: repeat(30, 20px); 
             gap: 1px; 
             background: #ddd; 
             border: 2px solid #333;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
         
-        .pixel { 
-            width: 20px; 
-            height: 20px; 
-            background: white; 
-            cursor: crosshair; 
-        }
+        .pixel { width: 20px; height: 20px; background: white; cursor: crosshair; transition: background 0.1s; }
         .pixel:hover { filter: brightness(0.9); }
         
         input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; background: none; }
         h2 { margin-top: 0; color: #333; }
+        
+        .Sbutton { display: inline-block; background-color: #1a73e8; color: white; padding: 15px 30px; margin: 10px; border-radius: 8px; text-decoration: none; font-size: 18px; transition: 0.3s; text-align: center; }
+
+        /* Cooldown UI */
+        #cooldownOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9); border-radius: 12px;
+            display: none; justify-content: center; align-items: center;
+            font-weight: bold; color: #1a73e8; z-index: 10;
+        }
     </style>
 </head>
 <body>
-
+    <a href="index.html" class="Sbutton">🏠</a>
     <div class="controls">
+        <div id="cooldownOverlay">Wait: <span id="timer">30</span>s</div>
         <h2>🎨 Pixel Canvas</h2>
-        <label>Pick Color:</label>
+        <label>Color:</label>
         <input type="color" id="colorPicker" value="#1a73e8">
-        <small>Click squares to draw!</small>
+        <small>30s cooldown per pixel</small>
     </div>
 
     <div id="canvas"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAOhxc2fAsuSNZhnOiqQE9uJHhtG9ONr6o",
@@ -57,12 +63,12 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const canvasSize = 20; // 20x20 grid
-
-        // 1. Generate the Grid in HTML
+        /*Change next number to make canvas bigger */
+        const canvasSize = 30;
         const canvas = document.getElementById('canvas');
         const pixels = {};
 
+        // 1. Generate Grid
         for (let i = 0; i < canvasSize * canvasSize; i++) {
             const pixel = document.createElement('div');
             pixel.className = 'pixel';
@@ -72,30 +78,53 @@
             pixels[i] = pixel;
         }
 
-        // 2. Paint Function (Save to Firebase)
+        // 2. Cooldown Logic
+        let canPaint = true;
+        const overlay = document.getElementById('cooldownOverlay');
+        const timerDisplay = document.getElementById('timer');
+
+        function startCooldown() {
+            canPaint = false;
+            overlay.style.display = 'flex';
+            let timeLeft = 30;
+            timerDisplay.innerText = timeLeft;
+
+            const interval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    canPaint = true;
+                    overlay.style.display = 'none';
+                }
+            }, 1000);
+        }
+
+        // 3. Paint Function
         window.paintPixel = async (index) => {
+            if (!canPaint) return;
+
             const color = document.getElementById('colorPicker').value;
             try {
-                // We store each pixel as its own document in a "canvas" collection
                 await setDoc(doc(db, "canvas", `pixel_${index}`), {
                     color: color,
-                    index: index
+                    index: index,
+                    timestamp: Date.now()
                 });
+                startCooldown();
             } catch (e) {
                 console.error("Error painting:", e);
             }
         };
 
-        // 3. Real-time Listener (Update colors when anyone draws)
-        onSnapshot(doc(db, "canvas", "pixel_data"), (snapshot) => {
-            // Note: For a small grid, we can also use a single document to store everything
-        });
-
-        // Optimized Listener: Listen for all pixel changes
-        import { collection } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        // 4. Improved Listener (Fixes the Admin Clearing Bug)
         onSnapshot(collection(db, "canvas"), (snap) => {
-            snap.forEach(change => {
-                const data = change.data();
+            // First, reset all local pixels to white
+            Object.values(pixels).forEach(p => p.style.background = 'white');
+            
+            // Then, fill in the colors that actually exist in the database
+            snap.forEach(doc => {
+                const data = doc.data();
                 if (pixels[data.index]) {
                     pixels[data.index].style.background = data.color;
                 }
